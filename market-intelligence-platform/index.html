@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Intelligence Platform</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: sans-serif; background: #0f0f0f; color: #e0e0e0; padding: 2rem; }
+    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #fff; }
+    .search { display: flex; gap: 1rem; margin-bottom: 2rem; }
+    input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 0.6rem 1rem; border-radius: 6px; font-size: 1rem; width: 200px; }
+    button { background: #2563eb; color: #fff; border: none; padding: 0.6rem 1.5rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #1d4ed8; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 1.5rem; }
+    .card h2 { font-size: 1rem; color: #888; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .signal { border-left: 3px solid #333; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; }
+    .signal.BUY { border-color: #22c55e; background: #0f2a1a; }
+    .signal.SELL { border-color: #ef4444; background: #2a0f0f; }
+    .signal-header { display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem; }
+    .badge { padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+    .badge.BUY { background: #22c55e; color: #000; }
+    .badge.SELL { background: #ef4444; color: #fff; }
+    .date { color: #666; font-size: 0.85rem; }
+    .price { color: #fff; font-weight: 600; }
+    .rsi { color: #888; font-size: 0.85rem; }
+    .explanation { color: #aaa; font-size: 0.85rem; line-height: 1.6; margin-top: 0.5rem; }
+    .loading { color: #666; text-align: center; padding: 2rem; }
+    canvas { max-height: 300px; }
+  </style>
+</head>
+<body>
+  <h1>Market Intelligence Platform</h1>
+
+  <div class="search">
+    <input type="text" id="ticker" placeholder="Enter ticker e.g. AAPL" value="AAPL">
+    <button onclick="analyze()">Analyze</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Price Chart</h2>
+      <canvas id="priceChart"></canvas>
+    </div>
+    <div class="card">
+      <h2>RSI</h2>
+      <canvas id="rsiChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 1.5rem">
+    <h2>Signals</h2>
+    <div id="signals"><p class="loading">Enter a ticker and click Analyze</p></div>
+  </div>
+
+  <script>
+    let priceChart, rsiChart;
+
+    async function analyze() {
+      const ticker = document.getElementById("ticker").value.toUpperCase();
+      document.getElementById("signals").innerHTML = '<p class="loading">Analyzing... this may take a few seconds</p>';
+
+      const res = await fetch(`http://127.0.0.1:8000/analyze/${ticker}`);
+      const data = await res.json();
+
+      renderSignals(data.signals);
+      await renderCharts(ticker, data.signals);
+    }
+
+    function renderSignals(signals) {
+      const container = document.getElementById("signals");
+      if (!signals.length) {
+        container.innerHTML = '<p class="loading">No signals found</p>';
+        return;
+      }
+
+      container.innerHTML = signals.map(s => `
+        <div class="signal ${s.signal}">
+          <div class="signal-header">
+            <span class="badge ${s.signal}">${s.signal}</span>
+            <span class="date">${s.date}</span>
+            <span class="price">$${s.close_price}</span>
+            <span class="rsi">RSI: ${s.rsi}</span>
+          </div>
+          <p class="explanation">${s.explanation.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#+\s/g, '').replace(/>/g, '')}</p>
+        </div>
+      `).join('');
+    }
+
+    async function renderCharts(ticker, signals) {
+      const res = await fetch(`http://127.0.0.1:8000/prices/${ticker}`);
+      const data = await res.json();
+
+      const labels = data.map(d => d.date);
+      const prices = data.map(d => d.close_price);
+      const rsiValues = data.map(d => d.rsi);
+
+      if (priceChart) priceChart.destroy();
+      if (rsiChart) rsiChart.destroy();
+
+      priceChart = new Chart(document.getElementById("priceChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{ label: ticker, data: prices, borderColor: "#2563eb", borderWidth: 1.5, pointRadius: 0, tension: 0.3 }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 6, color: "#666" }, grid: { color: "#222" } }, y: { ticks: { color: "#666" }, grid: { color: "#222" } } } }
+      });
+
+      rsiChart = new Chart(document.getElementById("rsiChart"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{ label: "RSI", data: rsiValues, borderColor: "#a855f7", borderWidth: 1.5, pointRadius: 0, tension: 0.3 }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { x: { ticks: { maxTicksLimit: 6, color: "#666" }, grid: { color: "#222" } }, y: { min: 0, max: 100, ticks: { color: "#666" }, grid: { color: "#222" } } },
+          plugins: { annotation: { annotations: { ob: { type: "line", yMin: 70, yMax: 70, borderColor: "#ef4444", borderWidth: 1, borderDash: [4,4] }, os: { type: "line", yMin: 30, yMax: 30, borderColor: "#22c55e", borderWidth: 1, borderDash: [4,4] } } } }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
