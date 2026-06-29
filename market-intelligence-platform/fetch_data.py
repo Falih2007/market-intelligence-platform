@@ -27,6 +27,21 @@ def setup_table():
             volume BIGINT
         )
     """)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS backtest_results (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ticker VARCHAR(10),
+        strategy VARCHAR(50),
+        run_date DATETIME,
+        period_days INT,
+         total_return FLOAT,
+        win_rate FLOAT,
+        avg_return FLOAT,
+        max_drawdown FLOAT,
+        sharpe_ratio FLOAT,
+        num_trades INT,
+        trades_json TEXT  
+    ''')
     conn.commit()
     cursor.close()
     conn.close()
@@ -53,7 +68,7 @@ def save_to_db(df: pd.DataFrame, ticker: str):
     conn.commit()
     cursor.close()
     conn.close()
-    
+
 def read_from_db(ticker: str) -> pd.DataFrame:
     conn = get_connection()
     df = pd.read_sql(

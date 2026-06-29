@@ -27,8 +27,81 @@
     .price { color: #fff; font-weight: 600; }
     .rsi { color: #888; font-size: 0.85rem; }
     .explanation { color: #aaa; font-size: 0.85rem; line-height: 1.6; margin-top: 0.5rem; }
+    .signal-explanation p { margin-bottom: 8px; line-height: 1.5; }
     .loading { color: #666; text-align: center; padding: 2rem; }
+    .error { color: #f87171; text-align: center; padding: 1rem; }
+    .backtest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .backtest-controls { display: flex; gap: 0.75rem; align-items: center; }
+    .period-select {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 0.55rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      min-width: 160px;
+    }
+    .period-select:focus { outline: none; border-color: #2563eb; }
+    .secondary-btn { background: #374151; }
+    .secondary-btn:hover { background: #4b5563; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin: 1rem 0 1.5rem; }
+    .metric { background: #141414; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.8rem; }
+    .metric-label { color: #888; font-size: 0.8rem; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .metric-value { color: #fff; font-size: 1rem; font-weight: 600; }
+    .table-wrap { margin-top: 1rem; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.65rem; border-bottom: 1px solid #2a2a2a; font-size: 0.9rem; }
+    th { color: #888; font-weight: 600; }
+    tr.trade-win td { color: #86efac; }
+    tr.trade-loss td { color: #fca5a5; }
+    .best-value { color: #22c55e; font-weight: 700; }
+    .positive { color: #22c55e; }
+    .negative { color: #ef4444; }
+    .paper-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .summary-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+    .summary-item { background: #141414; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.8rem; }
+    .summary-label { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+    .summary-value { color: #fff; font-size: 1rem; font-weight: 600; }
+    .paper-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1rem; }
+    .paper-input { width: 100%; margin-bottom: 0.75rem; }
+    .trade-buttons { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .buy-btn { background: #15803d; }
+    .buy-btn:hover { background: #166534; }
+    .sell-btn { background: #b91c1c; }
+    .sell-btn:hover { background: #991b1b; }
+    .mini-btn { padding: 0.4rem 0.7rem; font-size: 0.85rem; border-radius: 5px; }
+    .estimate-box { color: #9ca3af; font-size: 0.9rem; min-height: 1.4rem; margin-bottom: 0.75rem; }
+    .paper-message { min-height: 1.4rem; font-size: 0.9rem; }
+    .paper-message.success { color: #86efac; }
+    .paper-message.error { color: #fca5a5; padding: 0; text-align: left; }
+    .history-buy { background: rgba(37, 99, 235, 0.18); }
+    .history-sell-win { background: rgba(34, 197, 94, 0.12); }
+    .history-sell-loss { background: rgba(239, 68, 68, 0.12); }
+    #compareSection { margin-top: 1.5rem; }
+    #compareStatus { margin-top: 0.75rem; }
+    #backtestSection { margin-top: 1.5rem; display: none; }
+    #paperTradingSection { margin-top: 1.5rem; }
+    #runBacktestBtn { min-width: 140px; }
+    #compareStrategiesBtn { min-width: 170px; }
+    #resetPortfolioBtn { min-width: 150px; }
+    #runBacktestBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #compareStrategiesBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #resetPortfolioBtn:disabled { opacity: 0.6; cursor: not-allowed; }
     canvas { max-height: 300px; }
+    @media (max-width: 960px) {
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      .summary-bar { grid-template-columns: 1fr 1fr; }
+      .paper-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .metrics-grid { grid-template-columns: 1fr; }
+      .summary-bar { grid-template-columns: 1fr; }
+      .backtest-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      .backtest-controls { width: 100%; flex-wrap: wrap; }
+      .paper-header { flex-direction: column; align-items: flex-start; }
+      .trade-buttons { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
@@ -55,18 +128,192 @@
     <div id="signals"><p class="loading">Enter a ticker and click Analyze</p></div>
   </div>
 
+  <div id="backtestSection" class="card">
+    <div class="backtest-header">
+      <h2 id="backtestTitle">Backtesting</h2>
+      <div class="backtest-controls">
+        <select id="backtestStrategy" class="period-select">
+          <option value="rsi" selected>RSI</option>
+          <option value="macd">MACD</option>
+          <option value="ma_crossover">MA Crossover</option>
+        </select>
+        <select id="backtestPeriod" class="period-select">
+          <option value="90">90 days</option>
+          <option value="180">180 days</option>
+          <option value="365" selected>1 Year (365 days)</option>
+          <option value="730">2 Years (730 days)</option>
+          <option value="1825">5 Years (1825 days)</option>
+        </select>
+        <button id="runBacktestBtn" onclick="runBacktest()">Run Backtest</button>
+        <button id="compareStrategiesBtn" class="secondary-btn" onclick="compareStrategies()">Compare Strategies</button>
+      </div>
+    </div>
+    <div id="backtestStatus"><p class="loading">Analyze a ticker first to enable backtesting.</p></div>
+    <div id="backtestContent" style="display: none">
+      <div id="metricsGrid" class="metrics-grid"></div>
+      <canvas id="equityChart"></canvas>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Entry Date</th>
+              <th>Entry Price</th>
+              <th>Exit Date</th>
+              <th>Exit Price</th>
+              <th>Return %</th>
+              <th>WIN/LOSS</th>
+            </tr>
+          </thead>
+          <tbody id="tradesBody"></tbody>
+        </table>
+      </div>
+      <div id="compareSection" style="display: none">
+        <h2>Strategy Comparison</h2>
+        <div id="compareStatus"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th>Total Return %</th>
+                <th>Win Rate %</th>
+                <th>Sharpe Ratio</th>
+                <th># Trades</th>
+              </tr>
+            </thead>
+            <tbody id="compareBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="paperTradingSection" class="card">
+    <div class="paper-header">
+      <h2>Paper Trading</h2>
+      <button id="resetPortfolioBtn" class="secondary-btn" onclick="resetPaperPortfolio()">Reset Portfolio</button>
+    </div>
+
+    <div class="summary-bar">
+      <div class="summary-item"><div class="summary-label">Cash Available</div><div id="summaryCash" class="summary-value">$0.00</div></div>
+      <div class="summary-item"><div class="summary-label">Total Equity</div><div id="summaryEquity" class="summary-value">$0.00</div></div>
+      <div class="summary-item"><div class="summary-label">Total P&L</div><div id="summaryPnl" class="summary-value">$0.00</div></div>
+      <div class="summary-item"><div class="summary-label">Total P&L %</div><div id="summaryPnlPct" class="summary-value">0.00%</div></div>
+    </div>
+
+    <div class="paper-grid">
+      <div class="card">
+        <h2>Execute Trade</h2>
+        <input id="paperTicker" class="paper-input" type="text" placeholder="Ticker e.g. NVDA">
+        <input id="paperShares" class="paper-input" type="number" step="0.01" min="0.01" placeholder="Shares">
+        <div class="trade-buttons">
+          <button id="paperBuyBtn" class="buy-btn" onclick="submitPaperTrade('buy')">BUY</button>
+          <button id="paperSellBtn" class="sell-btn" onclick="submitPaperTrade('sell')">SELL</button>
+        </div>
+        <div id="paperEstimate" class="estimate-box">Enter ticker and shares for estimate.</div>
+        <div id="paperTradeMessage" class="paper-message"></div>
+      </div>
+
+      <div class="card">
+        <h2>Open Positions</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Shares</th>
+                <th>Avg Buy</th>
+                <th>Current</th>
+                <th>Market Value</th>
+                <th>P&L</th>
+                <th>P&L%</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="positionsBody">
+              <tr><td colspan="8" class="loading">Loading positions...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 1rem">
+      <h2>Trade History</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Ticker</th>
+              <th>Action</th>
+              <th>Shares</th>
+              <th>Price</th>
+              <th>Total</th>
+              <th>P&L</th>
+            </tr>
+          </thead>
+          <tbody id="paperHistoryBody">
+            <tr><td colspan="7" class="loading">Loading trade history...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let priceChart, rsiChart;
+    let priceChart, rsiChart, equityChart;
+    let currentTicker = null;
+    let paperQuotePrice = null;
 
     async function analyze() {
-      const ticker = document.getElementById("ticker").value.toUpperCase();
-      document.getElementById("signals").innerHTML = '<p class="loading">Analyzing... this may take a few seconds</p>';
+      const ticker = document.getElementById("ticker").value.trim().toUpperCase();
+      const signalsEl = document.getElementById("signals");
+      const backtestSectionEl = document.getElementById("backtestSection");
+      const backtestStatusEl = document.getElementById("backtestStatus");
+      const backtestContentEl = document.getElementById("backtestContent");
+      const backtestTitleEl = document.getElementById("backtestTitle");
+      const compareStatusEl = document.getElementById("compareStatus");
+      const compareSectionEl = document.getElementById("compareSection");
+      const compareBodyEl = document.getElementById("compareBody");
 
-      const res = await fetch(`http://127.0.0.1:8000/analyze/${ticker}`);
-      const data = await res.json();
+      if (!ticker) {
+        signalsEl.innerHTML = '<p class="error">Please enter a ticker symbol.</p>';
+        return;
+      }
 
-      renderSignals(data.signals);
-      await renderCharts(ticker, data.signals);
+      signalsEl.innerHTML = '<p class="loading">Analyzing... this may take a few seconds</p>';
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/analyze/${ticker}`);
+        if (!res.ok) {
+          throw new Error(`Analyze failed (${res.status})`);
+        }
+
+        const data = await res.json();
+        renderSignals(data.signals || []);
+        await renderCharts(ticker);
+
+        currentTicker = ticker;
+        backtestSectionEl.style.display = "block";
+        backtestContentEl.style.display = "none";
+        backtestTitleEl.textContent = "Backtesting";
+        backtestStatusEl.innerHTML = '<p class="loading">Click "Run Backtest" to evaluate RSI strategy performance.</p>';
+        compareStatusEl.innerHTML = "";
+        compareBodyEl.innerHTML = "";
+        compareSectionEl.style.display = "none";
+
+        if (equityChart) {
+          equityChart.destroy();
+          equityChart = null;
+        }
+      } catch (err) {
+        currentTicker = null;
+        backtestSectionEl.style.display = "none";
+        backtestContentEl.style.display = "none";
+        backtestStatusEl.innerHTML = "";
+        signalsEl.innerHTML = `<p class="error">Could not analyze ticker. ${err.message}</p>`;
+      }
     }
 
     function renderSignals(signals) {
@@ -76,6 +323,23 @@
         return;
       }
 
+      const toExplanationParagraphs = (text) => {
+        const cleaned = (text || "")
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+          .replace(/#+\s/g, '')
+          .replace(/>/g, '');
+
+        const paragraphs = cleaned
+          .split('\n')
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0)
+          .map((part) => `<p>${part}</p>`)
+          .join('');
+
+        return paragraphs || '<p>No explanation available.</p>';
+      };
+
       container.innerHTML = signals.map(s => `
         <div class="signal ${s.signal}">
           <div class="signal-header">
@@ -84,13 +348,16 @@
             <span class="price">$${s.close_price}</span>
             <span class="rsi">RSI: ${s.rsi}</span>
           </div>
-          <p class="explanation">${s.explanation.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#+\s/g, '').replace(/>/g, '')}</p>
+          <div class="explanation signal-explanation">${toExplanationParagraphs(s.explanation)}</div>
         </div>
       `).join('');
     }
 
-    async function renderCharts(ticker, signals) {
+    async function renderCharts(ticker) {
       const res = await fetch(`http://127.0.0.1:8000/prices/${ticker}`);
+      if (!res.ok) {
+        throw new Error(`Price fetch failed (${res.status})`);
+      }
       const data = await res.json();
 
       const labels = data.map(d => d.date);
@@ -122,6 +389,454 @@
         }
       });
     }
+
+    async function runBacktest() {
+      const backtestStatusEl = document.getElementById("backtestStatus");
+      const backtestContentEl = document.getElementById("backtestContent");
+      const runBtn = document.getElementById("runBacktestBtn");
+      const compareBtn = document.getElementById("compareStrategiesBtn");
+      const strategySelect = document.getElementById("backtestStrategy");
+      const periodSelect = document.getElementById("backtestPeriod");
+      const selectedStrategy = strategySelect.value;
+      const selectedPeriod = Number(periodSelect.value);
+
+      if (!currentTicker) {
+        backtestStatusEl.innerHTML = '<p class="error">Analyze a ticker before running backtest.</p>';
+        backtestContentEl.style.display = "none";
+        return;
+      }
+
+      backtestStatusEl.innerHTML = '<p class="loading">Running backtest... please wait.</p>';
+      backtestContentEl.style.display = "none";
+      runBtn.disabled = true;
+      compareBtn.disabled = true;
+      strategySelect.disabled = true;
+      periodSelect.disabled = true;
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/backtest/${encodeURIComponent(currentTicker)}?strategy=${encodeURIComponent(selectedStrategy)}&period=${selectedPeriod}`);
+        if (!res.ok) {
+          throw new Error(`Backtest failed (${res.status})`);
+        }
+
+        const data = await res.json();
+        if (data.error) {
+          backtestStatusEl.innerHTML = `<p class="error">${data.error}</p>`;
+          backtestContentEl.style.display = "none";
+          return;
+        }
+        renderBacktestResults(data, selectedStrategy, selectedPeriod);
+      } catch (err) {
+        backtestStatusEl.innerHTML = `<p class="error">Unable to run backtest. ${err.message}</p>`;
+        backtestContentEl.style.display = "none";
+      } finally {
+        runBtn.disabled = false;
+        compareBtn.disabled = false;
+        strategySelect.disabled = false;
+        periodSelect.disabled = false;
+      }
+    }
+
+    function renderBacktestResults(result, selectedStrategy, selectedPeriod) {
+      const backtestStatusEl = document.getElementById("backtestStatus");
+      const backtestContentEl = document.getElementById("backtestContent");
+      const backtestTitleEl = document.getElementById("backtestTitle");
+      const metricsGridEl = document.getElementById("metricsGrid");
+      const tradesBodyEl = document.getElementById("tradesBody");
+
+      const metrics = result.metrics || {};
+      const trades = result.trades || [];
+
+      const formatPercent = (value) => (value == null ? "N/A" : `${Number(value).toFixed(2)}%`);
+      const formatNumber = (value) => (value == null ? "N/A" : Number(value).toFixed(2));
+      const strategyLabelMap = { rsi: "RSI", macd: "MACD", ma_crossover: "MA Crossover" };
+      const periodLabelMap = { 90: "90 days", 180: "180 days", 365: "1 Year", 730: "2 Years", 1825: "5 Years" };
+      const strategyLabel = strategyLabelMap[selectedStrategy] || String(selectedStrategy).toUpperCase();
+      const periodLabel = periodLabelMap[selectedPeriod] || `${selectedPeriod} days`;
+      backtestTitleEl.textContent = `BACKTESTING — ${strategyLabel} — ${currentTicker} — ${periodLabel}`;
+
+      metricsGridEl.innerHTML = `
+        <div class="metric"><div class="metric-label">Total Return</div><div class="metric-value">${formatPercent(metrics.total_return)}</div></div>
+        <div class="metric"><div class="metric-label">Win Rate</div><div class="metric-value">${formatPercent(metrics.win_rate)}</div></div>
+        <div class="metric"><div class="metric-label">Avg Return / Trade</div><div class="metric-value">${formatPercent(metrics.avg_return)}</div></div>
+        <div class="metric"><div class="metric-label">Max Drawdown</div><div class="metric-value">${formatPercent(metrics.max_drawdown)}</div></div>
+        <div class="metric"><div class="metric-label">Sharpe Ratio</div><div class="metric-value">${formatNumber(metrics.sharpe_ratio)}</div></div>
+        <div class="metric"><div class="metric-label"># Trades</div><div class="metric-value">${metrics.num_trades ?? 0}</div></div>
+      `;
+
+      if (metrics.message) {
+        backtestStatusEl.innerHTML = `<p class="loading">${metrics.message}</p>`;
+      } else {
+        backtestStatusEl.innerHTML = "";
+      }
+
+      const cumulativeReturns = [0];
+      let cumulativeFactor = 1;
+      for (const trade of trades) {
+        cumulativeFactor *= (1 + (Number(trade.return_pct) / 100));
+        cumulativeReturns.push((cumulativeFactor - 1) * 100);
+      }
+      const tradeLabels = cumulativeReturns.map((_, idx) => idx);
+
+      if (equityChart) equityChart.destroy();
+      equityChart = new Chart(document.getElementById("equityChart"), {
+        type: "line",
+        data: {
+          labels: tradeLabels,
+          datasets: [{
+            label: "Cumulative Return %",
+            data: cumulativeReturns,
+            borderColor: "#22c55e",
+            borderWidth: 1.8,
+            pointRadius: 2,
+            tension: 0.25
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { title: { display: true, text: "Trade Number", color: "#888" }, ticks: { color: "#666" }, grid: { color: "#222" } },
+            y: { title: { display: true, text: "Cumulative Return %", color: "#888" }, ticks: { color: "#666" }, grid: { color: "#222" } }
+          }
+        }
+      });
+
+      if (!trades.length) {
+        tradesBodyEl.innerHTML = '<tr><td colspan="6" class="loading">No closed trades available.</td></tr>';
+      } else {
+        tradesBodyEl.innerHTML = trades.map((trade) => {
+          const rowClass = trade.pnl_type === "WIN" ? "trade-win" : "trade-loss";
+          return `
+            <tr class="${rowClass}">
+              <td>${trade.entry_date}</td>
+              <td>$${Number(trade.entry_price).toFixed(2)}</td>
+              <td>${trade.exit_date}</td>
+              <td>$${Number(trade.exit_price).toFixed(2)}</td>
+              <td>${Number(trade.return_pct).toFixed(2)}%</td>
+              <td>${trade.pnl_type}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      backtestContentEl.style.display = "block";
+    }
+
+    async function compareStrategies() {
+      const backtestContentEl = document.getElementById("backtestContent");
+      const compareStatusEl = document.getElementById("compareStatus");
+      const compareSectionEl = document.getElementById("compareSection");
+      const compareBtn = document.getElementById("compareStrategiesBtn");
+      const periodSelect = document.getElementById("backtestPeriod");
+      const selectedPeriod = Number(periodSelect.value);
+
+      if (!currentTicker) {
+        compareSectionEl.style.display = "block";
+        compareStatusEl.innerHTML = '<p class="error">Analyze a ticker before comparing strategies.</p>';
+        return;
+      }
+
+      backtestContentEl.style.display = "block";
+      compareSectionEl.style.display = "block";
+      compareStatusEl.innerHTML = '<p class="loading">Comparing strategies... please wait.</p>';
+      compareBtn.disabled = true;
+      periodSelect.disabled = true;
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/compare/${encodeURIComponent(currentTicker)}?period=${selectedPeriod}`);
+        if (!res.ok) {
+          throw new Error(`Compare failed (${res.status})`);
+        }
+
+        const data = await res.json();
+        renderComparisonResults(data.comparison || []);
+      } catch (err) {
+        compareStatusEl.innerHTML = `<p class="error">Unable to compare strategies. ${err.message}</p>`;
+      } finally {
+        compareBtn.disabled = false;
+        periodSelect.disabled = false;
+      }
+    }
+
+    function renderComparisonResults(comparisonRows) {
+      const compareStatusEl = document.getElementById("compareStatus");
+      const compareBodyEl = document.getElementById("compareBody");
+
+      const metricKeys = ["total_return", "win_rate", "sharpe_ratio", "num_trades"];
+      const bestValues = {};
+
+      for (const key of metricKeys) {
+        const values = comparisonRows
+          .map((row) => row[key])
+          .filter((value) => typeof value === "number" && Number.isFinite(value));
+        bestValues[key] = values.length ? Math.max(...values) : null;
+      }
+
+      const fmtPercent = (value) => (typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(2)}%` : "N/A");
+      const fmtNumber = (value) => (typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : "N/A");
+      const fmtTrades = (value) => (typeof value === "number" && Number.isFinite(value) ? value : "N/A");
+
+      if (!comparisonRows.length) {
+        compareBodyEl.innerHTML = '<tr><td colspan="5" class="loading">No comparison results available.</td></tr>';
+        compareStatusEl.innerHTML = "";
+        return;
+      }
+
+      compareBodyEl.innerHTML = comparisonRows.map((row) => {
+        const isBest = (key) => {
+          if (bestValues[key] == null) return false;
+          if (typeof row[key] !== "number" || !Number.isFinite(row[key])) return false;
+          return row[key] === bestValues[key];
+        };
+        const isSingleTrade = row.num_trades === 1;
+        const warningIcon = isSingleTrade ? ' <span title="Based on only 1 trade — not statistically significant.">⚠️</span>' : "";
+
+        const totalClass = isBest("total_return") ? "best-value" : "";
+        const winClass = isBest("win_rate") ? "best-value" : "";
+        const sharpeClass = isBest("sharpe_ratio") ? "best-value" : "";
+        const tradesClass = isBest("num_trades") ? "best-value" : "";
+
+        return `
+          <tr>
+            <td>${row.strategy || "N/A"}</td>
+            <td class="${totalClass}">${fmtPercent(row.total_return)}${warningIcon}</td>
+            <td class="${winClass}">${fmtPercent(row.win_rate)}${warningIcon}</td>
+            <td class="${sharpeClass}">${fmtNumber(row.sharpe_ratio)}</td>
+            <td class="${tradesClass}">${fmtTrades(row.num_trades)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      compareStatusEl.innerHTML = "";
+    }
+
+    async function fetchJson(url, options = {}) {
+      const res = await fetch(url, options);
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        data = {};
+      }
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
+      return data;
+    }
+
+    function formatCurrency(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return "N/A";
+      return `$${numeric.toFixed(2)}`;
+    }
+
+    function formatPercent(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return "N/A";
+      return `${numeric.toFixed(2)}%`;
+    }
+
+    function setPaperTradeMessage(message, type = "success") {
+      const msgEl = document.getElementById("paperTradeMessage");
+      msgEl.className = `paper-message ${type}`;
+      msgEl.textContent = message || "";
+    }
+
+    function updateEstimateDisplay() {
+      const estimateEl = document.getElementById("paperEstimate");
+      const ticker = document.getElementById("paperTicker").value.trim().toUpperCase();
+      const shares = Number(document.getElementById("paperShares").value);
+
+      if (!ticker || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(paperQuotePrice)) {
+        estimateEl.textContent = "Enter ticker and shares for estimate.";
+        return;
+      }
+
+      const total = shares * paperQuotePrice;
+      estimateEl.textContent = `Est. at $${paperQuotePrice.toFixed(2)}: Cost ${formatCurrency(total)} | Proceeds ${formatCurrency(total)}`;
+    }
+
+    async function refreshPaperPortfolio() {
+      const data = await fetchJson("http://127.0.0.1:8000/paper/portfolio");
+
+      document.getElementById("summaryCash").textContent = formatCurrency(data.cash);
+      document.getElementById("summaryEquity").textContent = formatCurrency(data.total_equity);
+
+      const pnlEl = document.getElementById("summaryPnl");
+      const pnlPctEl = document.getElementById("summaryPnlPct");
+      pnlEl.textContent = formatCurrency(data.total_pnl);
+      pnlPctEl.textContent = formatPercent(data.total_pnl_pct);
+      pnlEl.className = `summary-value ${Number(data.total_pnl) >= 0 ? "positive" : "negative"}`;
+      pnlPctEl.className = `summary-value ${Number(data.total_pnl_pct) >= 0 ? "positive" : "negative"}`;
+
+      const body = document.getElementById("positionsBody");
+      const positions = data.positions || [];
+      if (!positions.length) {
+        body.innerHTML = '<tr><td colspan="8" class="loading">No open positions.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = positions.map((pos) => {
+        const pnlClass = Number(pos.unrealized_pnl) >= 0 ? "positive" : "negative";
+        const pnlPctClass = Number(pos.unrealized_pnl_pct) >= 0 ? "positive" : "negative";
+        return `
+          <tr>
+            <td>${pos.ticker}</td>
+            <td>${Number(pos.shares).toFixed(2)}</td>
+            <td>${formatCurrency(pos.avg_buy_price)}</td>
+            <td>${formatCurrency(pos.current_price)}</td>
+            <td>${formatCurrency(pos.market_value)}</td>
+            <td class="${pnlClass}">${formatCurrency(pos.unrealized_pnl)}</td>
+            <td class="${pnlPctClass}">${formatPercent(pos.unrealized_pnl_pct)}</td>
+            <td><button class="mini-btn sell-btn" onclick="sellAllPosition('${pos.ticker}', ${Number(pos.shares)})">Sell All</button></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function refreshPaperHistory() {
+      const rows = await fetchJson("http://127.0.0.1:8000/paper/history");
+      const body = document.getElementById("paperHistoryBody");
+      const history = (rows || []).slice(0, 20);
+      if (!history.length) {
+        body.innerHTML = '<tr><td colspan="7" class="loading">No trades yet.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = history.map((trade) => {
+        let rowClass = "";
+        if (trade.action === "BUY") rowClass = "history-buy";
+        if (trade.action === "SELL") rowClass = Number(trade.pnl) >= 0 ? "history-sell-win" : "history-sell-loss";
+        const pnlText = trade.pnl == null ? "N/A" : formatCurrency(trade.pnl);
+        return `
+          <tr class="${rowClass}">
+            <td>${trade.executed_at}</td>
+            <td>${trade.ticker}</td>
+            <td>${trade.action}</td>
+            <td>${Number(trade.shares).toFixed(2)}</td>
+            <td>${formatCurrency(trade.price)}</td>
+            <td>${formatCurrency(trade.total_value)}</td>
+            <td>${pnlText}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function refreshPaperTrading() {
+      try {
+        await Promise.all([refreshPaperPortfolio(), refreshPaperHistory()]);
+      } catch (err) {
+        const body = document.getElementById("positionsBody");
+        body.innerHTML = `<tr><td colspan="8" class="error">Unable to load portfolio: ${err.message}</td></tr>`;
+        const history = document.getElementById("paperHistoryBody");
+        history.innerHTML = `<tr><td colspan="7" class="error">Unable to load history: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function fetchPaperQuote() {
+      const ticker = document.getElementById("paperTicker").value.trim().toUpperCase();
+      paperQuotePrice = null;
+      if (!ticker) {
+        updateEstimateDisplay();
+        return;
+      }
+
+      try {
+        const prices = await fetchJson(`http://127.0.0.1:8000/prices/${encodeURIComponent(ticker)}`);
+        if (!prices.length) {
+          throw new Error("No pricing data found for ticker.");
+        }
+        const last = prices[prices.length - 1];
+        paperQuotePrice = Number(last.close_price);
+        updateEstimateDisplay();
+      } catch (err) {
+        setPaperTradeMessage(err.message, "error");
+        updateEstimateDisplay();
+      }
+    }
+
+    async function submitPaperTrade(action) {
+      const ticker = document.getElementById("paperTicker").value.trim().toUpperCase();
+      const shares = Number(document.getElementById("paperShares").value);
+      const buyBtn = document.getElementById("paperBuyBtn");
+      const sellBtn = document.getElementById("paperSellBtn");
+
+      if (!ticker || !Number.isFinite(shares) || shares <= 0) {
+        setPaperTradeMessage("Enter a valid ticker and shares.", "error");
+        return;
+      }
+
+      buyBtn.disabled = true;
+      sellBtn.disabled = true;
+      setPaperTradeMessage("Executing trade...", "success");
+
+      try {
+        const payload = { ticker, shares };
+        const endpoint = action === "buy" ? "/paper/buy" : "/paper/sell";
+        const data = await fetchJson(`http://127.0.0.1:8000${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (action === "buy") {
+          setPaperTradeMessage(`BUY executed: ${data.shares} ${data.ticker} @ ${formatCurrency(data.price)}`, "success");
+        } else {
+          setPaperTradeMessage(`SELL executed: ${data.shares} ${data.ticker} @ ${formatCurrency(data.price)}`, "success");
+        }
+        await refreshPaperTrading();
+      } catch (err) {
+        setPaperTradeMessage(err.message, "error");
+      } finally {
+        buyBtn.disabled = false;
+        sellBtn.disabled = false;
+      }
+    }
+
+    async function sellAllPosition(ticker, shares) {
+      try {
+        await fetchJson("http://127.0.0.1:8000/paper/sell", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticker, shares }),
+        });
+        setPaperTradeMessage(`Sold all ${ticker} shares.`, "success");
+        await refreshPaperTrading();
+      } catch (err) {
+        setPaperTradeMessage(err.message, "error");
+      }
+    }
+
+    async function resetPaperPortfolio() {
+      const confirmed = window.confirm("Reset portfolio to $100,000 and clear all trades?");
+      if (!confirmed) return;
+
+      const resetBtn = document.getElementById("resetPortfolioBtn");
+      resetBtn.disabled = true;
+      try {
+        await fetchJson("http://127.0.0.1:8000/paper/reset", { method: "POST" });
+        setPaperTradeMessage("Portfolio reset to $100,000.", "success");
+        await refreshPaperTrading();
+      } catch (err) {
+        setPaperTradeMessage(err.message, "error");
+      } finally {
+        resetBtn.disabled = false;
+      }
+    }
+
+    function initPaperTrading() {
+      const tickerInput = document.getElementById("paperTicker");
+      const sharesInput = document.getElementById("paperShares");
+      tickerInput.addEventListener("blur", fetchPaperQuote);
+      sharesInput.addEventListener("input", updateEstimateDisplay);
+      tickerInput.addEventListener("input", () => {
+        paperQuotePrice = null;
+        updateEstimateDisplay();
+      });
+      refreshPaperTrading();
+    }
+
+    initPaperTrading();
   </script>
 </body>
 </html>
