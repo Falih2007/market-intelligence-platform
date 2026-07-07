@@ -1,14 +1,29 @@
 import os
+from urllib.parse import urlparse
+
 import yfinance as yf
 import pandas as pd
 import mysql.connector
 
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    "database": os.getenv("DB_NAME", "market_data")
-}
+_DATABASE_URL = os.getenv("DATABASE_URL")
+
+if _DATABASE_URL:
+    _parsed = urlparse(_DATABASE_URL)
+    DB_CONFIG = {
+        "host": _parsed.hostname,
+        "port": _parsed.port or 3306,
+        "user": _parsed.username,
+        "password": _parsed.password,
+        "database": _parsed.path.lstrip("/"),
+    }
+else:
+    DB_CONFIG = {
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": int(os.getenv("DB_PORT", "3306")),
+        "user": os.getenv("DB_USER", "root"),
+        "password": os.getenv("DB_PASSWORD", ""),
+        "database": os.getenv("DB_NAME", "market_data"),
+    }
 
 def get_connection():
     return mysql.connector.connect(**DB_CONFIG)
