@@ -4,46 +4,47 @@ from typing import Any
 
 import mysql.connector
 import pandas as pd
+from sqlalchemy.exc import ProgrammingError
 
-from fetch_data import get_connection
+from fetch_data import get_sqlalchemy_engine
 
 
 def _fetch_ohlcv_for_backtest(ticker: str, period_days: int) -> pd.DataFrame:
-    conn = get_connection()
+    engine = get_sqlalchemy_engine()
     try:
-        try:
-            df = pd.read_sql(
-                """
-                SELECT date, open AS open_price, close AS close_price
-                FROM ohlcv
-                WHERE ticker = %s
-                ORDER BY date DESC
-                LIMIT %s
-                """,
-                conn,
-                params=(ticker, period_days),
-            )
-        except mysql.connector.Error as err:
-            # Support schemas that store prices as open_price/close_price.
-            if err.errno != 1054:
-                raise
-            df = pd.read_sql(
-                """
-                SELECT date, open_price, close_price
-                FROM ohlcv
-                WHERE ticker = %s
-                ORDER BY date DESC
-                LIMIT %s
-                """,
-                conn,
-                params=(ticker, period_days),
-            )
-    finally:
-        conn.close()
+        df = pd.read_sql(
+            """
+            SELECT date, open AS open_price, close AS close_price
+            FROM ohlcv
+            WHERE ticker = %s
+            ORDER BY date DESC
+            LIMIT %s
+            """,
+            engine,
+            params=(ticker, period_days),
+        )
+    except ProgrammingError as err:
+        # Support schemas that store prices as open_price/close_price.
+        if not isinstance(err.orig, mysql.connector.Error) or err.orig.errno != 1054:
+            raise
+        df = pd.read_sql(
+            """
+            SELECT date, open_price, close_price
+            FROM ohlcv
+            WHERE ticker = %s
+            ORDER BY date DESC
+            LIMIT %s
+            """,
+            engine,
+            params=(ticker, period_days),
+        )
 
     if df.empty:
         return df
 
+    for column in ("open_price", "close_price"):
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date").reset_index(drop=True)
     return df

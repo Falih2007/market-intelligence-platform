@@ -1,15 +1,15 @@
 import pandas as pd
 import mysql.connector
-from fetch_data import get_connection
+from fetch_data import get_connection, get_sqlalchemy_engine
 
 def read_from_db(ticker: str) -> pd.DataFrame:
-    conn = get_connection()
+    engine = get_sqlalchemy_engine()
     df = pd.read_sql(
         "SELECT date, close_price FROM ohlcv WHERE ticker = %s ORDER BY date",
-        conn,
+        engine,
         params=(ticker,)
     )
-    conn.close()
+    df["close_price"] = pd.to_numeric(df["close_price"], errors="coerce")
     df.set_index("date", inplace=True)
     return df
 

@@ -4,6 +4,8 @@ from urllib.parse import urlparse
 import yfinance as yf
 import pandas as pd
 import mysql.connector
+from sqlalchemy import URL, create_engine
+from sqlalchemy.engine import Engine
 
 _DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -27,6 +29,33 @@ else:
 
 def get_connection():
     return mysql.connector.connect(**DB_CONFIG)
+
+
+_SQLALCHEMY_ENGINE: Engine | None = None
+
+
+def get_sqlalchemy_engine() -> Engine:
+    global _SQLALCHEMY_ENGINE
+
+    if _SQLALCHEMY_ENGINE is not None:
+        return _SQLALCHEMY_ENGINE
+
+    if _DATABASE_URL:
+        sqlalchemy_url = _DATABASE_URL.replace("mysql://", "mysql+mysqlconnector://", 1)
+        _SQLALCHEMY_ENGINE = create_engine(sqlalchemy_url, pool_pre_ping=True)
+        return _SQLALCHEMY_ENGINE
+
+    sqlalchemy_url = URL.create(
+        "mysql+mysqlconnector",
+        username=DB_CONFIG["user"],
+        password=DB_CONFIG["password"],
+        host=DB_CONFIG["host"],
+        port=DB_CONFIG.get("port", 3306),
+        database=DB_CONFIG["database"],
+    )
+    _SQLALCHEMY_ENGINE = create_engine(sqlalchemy_url, pool_pre_ping=True)
+    return _SQLALCHEMY_ENGINE
+
 
 def setup_table():
     conn = get_connection()
@@ -87,13 +116,15 @@ def save_to_db(df: pd.DataFrame, ticker: str):
     conn.close()
 
 def read_from_db(ticker: str) -> pd.DataFrame:
-    conn = get_connection()
+    engine = get_sqlalchemy_engine()
     df = pd.read_sql(
         "SELECT * FROM ohlcv WHERE ticker = %s ORDER BY date",
-        conn,
+        engine,
         params=(ticker,)
     )
-    conn.close()
+    for column in ("open_price", "high_price", "low_price", "close_price", "volume"):
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
     return df
 
 if __name__ == "__main__":
