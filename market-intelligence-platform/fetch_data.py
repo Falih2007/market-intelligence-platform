@@ -1,12 +1,13 @@
+import os
 import yfinance as yf
 import pandas as pd
 import mysql.connector
 
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "ghouse@1974",
-    "database": "market_data"
+    "host": os.getenv("DB_HOST", "localhost"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", "market_data")
 }
 
 def get_connection():
