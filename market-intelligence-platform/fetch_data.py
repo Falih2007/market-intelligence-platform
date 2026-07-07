@@ -57,6 +57,7 @@ def setup_table():
         sharpe_ratio FLOAT,
         num_trades INT,
         trades_json TEXT  
+    )
     ''')
     conn.commit()
     cursor.close()

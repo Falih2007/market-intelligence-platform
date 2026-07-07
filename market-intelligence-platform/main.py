@@ -1,10 +1,12 @@
 import json
+import logging
 
 import pandas as pd
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+import mysql.connector
 from pydantic import BaseModel
-from fetch_data import fetch_ohlcv, get_connection, save_to_db
+from fetch_data import fetch_ohlcv, get_connection, save_to_db, setup_table
 from signals import read_from_db, calculate_rsi, generate_rsi_signals, save_signals_to_db
 from explainer import explain_signal
 from backtest import run_backtest
@@ -19,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +29,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def initialize_database_tables():
+    try:
+        setup_table()
+    except mysql.connector.Error:
+        logger.exception(
+            "Database table initialization failed during startup; continuing without automatic table creation."
+        )
+    except Exception:
+        logger.exception("Unexpected error while initializing database tables during startup.")
 
 
 def _round_or_none(value, decimals: int = 2):
